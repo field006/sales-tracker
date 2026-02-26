@@ -46,6 +46,17 @@ export async function fetchMe() {
     return data.user
 }
 
+export async function changePassword(old_password, new_password) {
+    const res = await customFetch('/api/auth/change-password', {
+        method: 'PUT',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ old_password, new_password })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to change password')
+    return data
+}
+
 export async function fetchReceipts(search = '', startDate = '', endDate = '') {
     const params = new URLSearchParams()
     if (search) params.append('search', search)

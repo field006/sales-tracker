@@ -207,7 +207,7 @@ export default function CatalogView() {
                     <h2 style={{ fontSize: '1.25rem', marginBottom: '16px' }}>Manage Products</h2>
 
                     <form onSubmit={handleCreateProduct} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px', paddingBottom: '24px', borderBottom: '1px solid var(--border)' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                        <div className="product-form-grid">
                             <div className="form-group">
                                 <label>Product Name</label>
                                 <input
@@ -253,7 +253,7 @@ export default function CatalogView() {
                     {prodLoading ? <p>Loading...</p> : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {products.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>No products yet.</p> : currentProds.map(prod => (
-                                <div key={prod.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', alignItems: 'center', padding: '12px 16px', backgroundColor: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', gap: '16px' }}>
+                                <div key={prod.id} className="product-list-item">
                                     <span style={{ fontWeight: 600 }}>{prod.name}</span>
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                                         {prod.category_name || <span style={{ fontStyle: 'italic' }}>Uncategorized</span>}

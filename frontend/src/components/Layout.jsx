@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Home, ReceiptText, Menu, X, Sun, Moon, LogOut, PackageSearch, TrendingUp } from 'lucide-react'
+import { Home, ReceiptText, Menu, X, Sun, Moon, LogOut, PackageSearch, TrendingUp, KeyRound } from 'lucide-react'
+import ChangePasswordModal from './ChangePasswordModal'
 
 export default function Layout({ children, currentView, onViewChange, theme, toggleTheme, onLogout, user }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
 
     // Close mobile menu when screen resizes to desktop
     useEffect(() => {
@@ -98,6 +100,12 @@ export default function Layout({ children, currentView, onViewChange, theme, tog
                         {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                         <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
                     </button>
+                    {user && (
+                        <button className="nav-item" onClick={() => setIsPasswordModalOpen(true)} style={{ width: '100%', marginTop: '4px' }}>
+                            <KeyRound size={20} />
+                            <span>Change Password</span>
+                        </button>
+                    )}
                     {onLogout && (
                         <button className="nav-item" onClick={onLogout} style={{ width: '100%', marginTop: '4px', color: 'var(--danger)' }}>
                             <LogOut size={20} />
@@ -113,6 +121,11 @@ export default function Layout({ children, currentView, onViewChange, theme, tog
                     {children}
                 </div>
             </main>
+
+            {/* Modals */}
+            {isPasswordModalOpen && (
+                <ChangePasswordModal onClose={() => setIsPasswordModalOpen(false)} />
+            )}
         </div>
     )
 }
