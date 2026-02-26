@@ -3,7 +3,12 @@ const getApiUrl = () => localStorage.getItem('invoice-api-url') || import.meta.e
 async function customFetch(endpoint, options = {}) {
     try {
         const url = `${getApiUrl()}${endpoint}`;
-        return await fetch(url, options);
+        // Add ngrok-skip-browser-warning header to bypass ngrok's interstitial page
+        const headers = {
+            ...options.headers,
+            'ngrok-skip-browser-warning': 'true',
+        };
+        return await fetch(url, { ...options, headers });
     } catch (err) {
         // TypeError: Failed to fetch usually means network error/CORS
         if (err.name === 'TypeError' && err.message.includes('fetch')) {
