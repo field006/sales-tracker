@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url'
 import bcrypt from 'bcryptjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const dbPath = path.join(__dirname, '..', 'receipts.db')
+const dbPath = process.env.DATABASE_URL || path.join(__dirname, '..', 'receipts.db')
 
 const db = new Database(dbPath)
 
