@@ -681,6 +681,96 @@ body {
   padding: 4px;
 }
 
+/* ===== Dashboard Header ===== */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.dashboard-filter-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--surface);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.dashboard-date-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dashboard-date-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-date-field label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+  margin-bottom: 0;
+}
+
+.dashboard-date-field .input {
+  padding: 6px 8px;
+  width: auto;
+  min-width: 140px;
+}
+
+.dashboard-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dashboard-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .dashboard-date-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dashboard-date-field {
+    width: 100%;
+  }
+
+  .dashboard-date-field .input {
+    flex: 1;
+    width: 100%;
+  }
+
+  .dashboard-actions {
+    width: 100%;
+  }
+
+  .dashboard-actions .btn {
+    flex: 1;
+  }
+}
+
 /* ===== Dashboard Overview ===== */
 .dashboard-grid {
   display: grid;

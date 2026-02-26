@@ -11,7 +11,7 @@ import {
     Cell,
     Legend
 } from 'recharts'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { fetchDashboardStats, fetchDashboardWeekly, fetchDashboardCategories, fetchReceipts } from '../api'
 
 // Array of nice colors for the pie chart
@@ -35,44 +35,43 @@ export default function Dashboard() {
     const [fullFilteredReceipts, setFullFilteredReceipts] = useState([])
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        const loadData = async () => {
-            setLoading(true)
-            try {
-                const [st, week, cats, receipts] = await Promise.all([
-                    fetchDashboardStats(startDate, endDate),
-                    fetchDashboardWeekly(startDate, endDate),
-                    fetchDashboardCategories(startDate, endDate),
-                    fetchReceipts('', startDate, endDate)
-                ])
+    const loadData = useCallback(async () => {
+        setLoading(true)
+        try {
+            const [st, week, cats, receipts] = await Promise.all([
+                fetchDashboardStats(startDate, endDate),
+                fetchDashboardWeekly(startDate, endDate),
+                fetchDashboardCategories(startDate, endDate),
+                fetchReceipts('', startDate, endDate)
+            ])
 
-                setStats({
-                    total_revenue: st.total_revenue || 0,
-                    receipt_count: st.receipt_count || 0,
-                    avg_ticket: st.avg_ticket || 0
-                })
+            setStats({
+                total_revenue: st.total_revenue || 0,
+                receipt_count: st.receipt_count || 0,
+                avg_ticket: st.avg_ticket || 0
+            })
 
-                setWeeklyData(week)
+            setWeeklyData(week)
 
-                // Assign colors dynamically based on index
-                setCategoryData(cats.map((c, i) => ({
-                    ...c,
-                    color: PIE_COLORS[i % PIE_COLORS.length]
-                })))
+            setCategoryData(cats.map((c, i) => ({
+                ...c,
+                color: PIE_COLORS[i % PIE_COLORS.length]
+            })))
 
-                // Store full list for export, and top 5 recent sales locally
-                if (receipts) {
-                    setFullFilteredReceipts(receipts)
-                    const sorted = [...receipts].sort((a, b) => new Date(b.date) - new Date(a.date))
-                    setRecentReceipts(sorted.slice(0, 5))
-                }
-
-            } catch (err) {
-                console.error("Dashboard failed to load", err)
-            } finally {
-                setLoading(false)
+            if (receipts) {
+                setFullFilteredReceipts(receipts)
+                const sorted = [...receipts].sort((a, b) => new Date(b.date) - new Date(a.date))
+                setRecentReceipts(sorted.slice(0, 5))
             }
+
+        } catch (err) {
+            console.error("Dashboard failed to load", err)
+        } finally {
+            setLoading(false)
         }
+    }, [startDate, endDate])
+
+    useEffect(() => {
         loadData()
     }, []) // Initial load
 
@@ -127,37 +126,38 @@ export default function Dashboard() {
 
     return (
         <div className="dashboard">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+            <div className="dashboard-header">
                 <h2>Sales Dashboard</h2>
 
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--surface)', padding: '8px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>From</label>
-                        <input
-                            type="date"
-                            className="input"
-                            style={{ padding: '6px' }}
-                            value={startDate}
-                            onChange={e => setStartDate(e.target.value)}
-                        />
+                <div className="dashboard-filter-bar">
+                    <div className="dashboard-date-group">
+                        <div className="dashboard-date-field">
+                            <label>From</label>
+                            <input
+                                type="date"
+                                className="input"
+                                value={startDate}
+                                onChange={e => setStartDate(e.target.value)}
+                            />
+                        </div>
+                        <div className="dashboard-date-field">
+                            <label>To</label>
+                            <input
+                                type="date"
+                                className="input"
+                                value={endDate}
+                                onChange={e => setEndDate(e.target.value)}
+                            />
+                        </div>
                     </div>
-                    <span style={{ color: 'var(--border)' }}>|</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>To</label>
-                        <input
-                            type="date"
-                            className="input"
-                            style={{ padding: '6px' }}
-                            value={endDate}
-                            onChange={e => setEndDate(e.target.value)}
-                        />
+                    <div className="dashboard-actions">
+                        <button className="btn btn-primary btn-sm" onClick={handleApplyFilter}>
+                            Apply
+                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={handleExport} style={{ border: '1px solid var(--border)' }}>
+                            Download Report
+                        </button>
                     </div>
-                    <button className="btn btn-primary btn-sm" onClick={handleApplyFilter} style={{ marginRight: '8px' }}>
-                        Apply
-                    </button>
-                    <button className="btn btn-ghost btn-sm" onClick={handleExport} style={{ border: '1px solid var(--border)' }}>
-                        Download Report
-                    </button>
                 </div>
             </div>
 
