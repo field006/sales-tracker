@@ -42,20 +42,25 @@ function App() {
             })
     }, [])
 
-    const handleAuth = async (username, password) => {
+    const handleAuth = async (apiUrl, username, password) => {
         setAuthError(null)
         try {
+            // Save the URL to localStorage before attempting login so api.js can use it
+            localStorage.setItem('invoice-api-url', apiUrl)
+
             const data = await login(username, password)
 
             localStorage.setItem('invoice-token', data.token)
             setUser(data.user)
         } catch (err) {
             setAuthError(err.message)
+            // Optional: You could remove it here if login fails, but maybe better to keep it so they don't have to re-type it
         }
     }
 
     const handleLogout = () => {
         localStorage.removeItem('invoice-token')
+        localStorage.removeItem('invoice-api-url')
         setUser(null)
         setView('dashboard')
     }
@@ -90,8 +95,8 @@ function App() {
             setReceipts(data)
         } catch (err) {
             console.error('Failed to load receipts:', err)
-            if (err.message === 'UNAUTHORIZED') {
-                handleLogout() // Force clear if token expired
+            if (err.message === 'UNAUTHORIZED' || err.message === 'NETWORK_ERROR') {
+                handleLogout() // Force clear if token expired or backend is down
             }
         } finally {
             setLoading(false)

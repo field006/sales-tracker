@@ -1,4 +1,17 @@
-const API_URL = import.meta.env.VITE_API_URL || '';
+const getApiUrl = () => localStorage.getItem('invoice-api-url') || import.meta.env.VITE_API_URL || '';
+
+async function customFetch(endpoint, options = {}) {
+    try {
+        const url = `${getApiUrl()}${endpoint}`;
+        return await fetch(url, options);
+    } catch (err) {
+        // TypeError: Failed to fetch usually means network error/CORS
+        if (err.name === 'TypeError' && err.message.includes('fetch')) {
+            throw new Error('NETWORK_ERROR');
+        }
+        throw err;
+    }
+}
 
 function getAuthHeaders(headers = {}) {
     const token = localStorage.getItem('invoice-token')
@@ -9,7 +22,7 @@ function getAuthHeaders(headers = {}) {
 }
 
 export async function login(username, password) {
-    const res = await fetch(`${API_URL}/api/auth/login`, {
+    const res = await customFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -20,7 +33,7 @@ export async function login(username, password) {
 }
 
 export async function fetchMe() {
-    const res = await fetch(`${API_URL}/api/auth/me`, {
+    const res = await customFetch('/api/auth/me', {
         headers: getAuthHeaders()
     })
     const data = await res.json()
@@ -35,7 +48,7 @@ export async function fetchReceipts(search = '', startDate = '', endDate = '') {
     if (endDate) params.append('endDate', endDate)
     const qs = params.toString() ? `?${params.toString()}` : ''
 
-    const res = await fetch(`${API_URL}/api/receipts${qs}`, {
+    const res = await customFetch(`/api/receipts${qs}`, {
         headers: getAuthHeaders()
     });
     if (!res.ok) {
@@ -46,7 +59,7 @@ export async function fetchReceipts(search = '', startDate = '', endDate = '') {
 }
 
 export async function fetchReceipt(id) {
-    const res = await fetch(`${API_URL}/api/receipts/${id}`, {
+    const res = await customFetch(`/api/receipts/${id}`, {
         headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch receipt');
@@ -54,7 +67,7 @@ export async function fetchReceipt(id) {
 }
 
 export async function createReceipt(data) {
-    const res = await fetch(`${API_URL}/api/receipts`, {
+    const res = await customFetch('/api/receipts', {
         method: 'POST',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(data),
@@ -67,7 +80,7 @@ export async function createReceipt(data) {
 }
 
 export async function updateReceipt(id, data) {
-    const res = await fetch(`${API_URL}/api/receipts/${id}`, {
+    const res = await customFetch(`/api/receipts/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(data),
@@ -80,7 +93,7 @@ export async function updateReceipt(id, data) {
 }
 
 export async function deleteReceipt(id) {
-    const res = await fetch(`${API_URL}/api/receipts/${id}`, {
+    const res = await customFetch(`/api/receipts/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
     });
@@ -90,13 +103,13 @@ export async function deleteReceipt(id) {
 
 // ===== CATALOG =====
 export async function fetchCategories() {
-    const res = await fetch(`${API_URL}/api/catalog/categories`, { headers: getAuthHeaders() });
+    const res = await customFetch('/api/catalog/categories', { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch categories');
     return res.json();
 }
 
 export async function createCategory(name) {
-    const res = await fetch(`${API_URL}/api/catalog/categories`, {
+    const res = await customFetch('/api/catalog/categories', {
         method: 'POST',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ name }),
@@ -109,7 +122,7 @@ export async function createCategory(name) {
 }
 
 export async function deleteCategory(id) {
-    const res = await fetch(`${API_URL}/api/catalog/categories/${id}`, {
+    const res = await customFetch(`/api/catalog/categories/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
     });
@@ -118,13 +131,13 @@ export async function deleteCategory(id) {
 }
 
 export async function fetchProducts() {
-    const res = await fetch(`${API_URL}/api/catalog/products`, { headers: getAuthHeaders() });
+    const res = await customFetch('/api/catalog/products', { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch products');
     return res.json();
 }
 
 export async function createProduct(data) {
-    const res = await fetch(`${API_URL}/api/catalog/products`, {
+    const res = await customFetch('/api/catalog/products', {
         method: 'POST',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(data),
@@ -137,7 +150,7 @@ export async function createProduct(data) {
 }
 
 export async function updateProduct(id, data) {
-    const res = await fetch(`${API_URL}/api/catalog/products/${id}`, {
+    const res = await customFetch(`/api/catalog/products/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(data),
@@ -150,7 +163,7 @@ export async function updateProduct(id, data) {
 }
 
 export async function deleteProduct(id) {
-    const res = await fetch(`${API_URL}/api/catalog/products/${id}`, {
+    const res = await customFetch(`/api/catalog/products/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
     });
@@ -165,7 +178,7 @@ export async function fetchDashboardStats(startDate, endDate) {
     if (endDate) params.append('endDate', endDate)
     const qs = params.toString() ? `?${params.toString()}` : ''
 
-    const res = await fetch(`${API_URL}/api/dashboard/stats${qs}`, { headers: getAuthHeaders() });
+    const res = await customFetch(`/api/dashboard/stats${qs}`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch stats');
     return res.json();
 }
@@ -176,7 +189,7 @@ export async function fetchDashboardWeekly(startDate, endDate) {
     if (endDate) params.append('endDate', endDate)
     const qs = params.toString() ? `?${params.toString()}` : ''
 
-    const res = await fetch(`${API_URL}/api/dashboard/weekly${qs}`, { headers: getAuthHeaders() });
+    const res = await customFetch(`/api/dashboard/weekly${qs}`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch weekly trend');
     return res.json();
 }
@@ -187,7 +200,7 @@ export async function fetchDashboardCategories(startDate, endDate) {
     if (endDate) params.append('endDate', endDate)
     const qs = params.toString() ? `?${params.toString()}` : ''
 
-    const res = await fetch(`${API_URL}/api/dashboard/categories${qs}`, { headers: getAuthHeaders() });
+    const res = await customFetch(`/api/dashboard/categories${qs}`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch category stats');
     return res.json();
 }

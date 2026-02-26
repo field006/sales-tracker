@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { ReceiptText, Lock } from 'lucide-react'
 
 export default function AuthView({ onLogin, error }) {
+    const defaultApiUrl = localStorage.getItem('invoice-api-url') || import.meta.env.VITE_API_URL || '';
+    const [apiUrl, setApiUrl] = useState(defaultApiUrl)
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
 
     const handleSubmit = (e) => {
         e.preventDefault()
-        onLogin(username, password)
+        onLogin(apiUrl, username, password)
     }
 
     return (
@@ -41,6 +43,21 @@ export default function AuthView({ onLogin, error }) {
                     )}
 
                     <form onSubmit={handleSubmit} className="auth-form">
+                        <div className="form-group">
+                            <label style={{ fontWeight: 600, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Server URL
+                            </label>
+                            <input
+                                type="url"
+                                className="input-editorial"
+                                required
+                                value={apiUrl}
+                                onChange={e => setApiUrl(e.target.value)}
+                                placeholder="https://api.example.com"
+                                style={{ marginBottom: '1rem' }}
+                            />
+                        </div>
+
                         <div className="form-group">
                             <label style={{ fontWeight: 600, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 Username
