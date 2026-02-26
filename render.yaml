@@ -1,9 +1,10 @@
 services:
   - type: web
     name: sales-tracker-backend
-    env: docker
-    dockerfilePath: backend/Dockerfile
-    dockerContext: .
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/index.js
     disk:
       name: sqlite-data
       mountPath: /data
