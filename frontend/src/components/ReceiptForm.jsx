@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Trash2 } from 'lucide-react'
 import { createReceipt, updateReceipt, fetchReceipt, fetchProducts, fetchCategories, createProduct } from '../api'
 
 const emptyItem = { name: '', category: 'Uncategorized', category_id: null, qty: 1, price: 0 }
@@ -279,8 +280,8 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                 const showNewProductFields = activeDropdownRow === index && item.is_new && searchStr.length > 0
 
                 return (
-                    <div key={index} className="item-row" style={{ position: 'relative', flexWrap: 'wrap' }}>
-                        <div style={{ flex: '2', minWidth: '200px', display: 'flex', flexDirection: 'column' }}>
+                    <div key={index} className="item-row">
+                        <div className="item-name-group">
                             <input
                                 type="text"
                                 className="input item-name"
@@ -317,7 +318,7 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                                     <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>New Product!</span>
                                     <select
                                         className="select"
-                                        style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+                                        style={{ padding: '4px 8px', fontSize: '16px' }}
                                         value={item.category_id || ''}
                                         onChange={e => updateItem(index, 'category_id', e.target.value)}
                                     >
@@ -330,7 +331,7 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                             )}
                         </div>
 
-                        <div style={{ flex: '1', display: 'flex', gap: '8px' }}>
+                        <div className="item-details-group">
                             <input
                                 type="number"
                                 className="input item-qty"
@@ -350,18 +351,18 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                             />
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <span className="item-total" style={{ minWidth: '80px', textAlign: 'right' }}>
+                        <div className="item-actions-group">
+                            <span className="item-total">
                                 Rp {(item.qty * item.price).toLocaleString('id-ID')}
                             </span>
                             <button
                                 type="button"
-                                className="btn btn-icon btn-ghost btn-sm"
+                                className="btn btn-icon btn-ghost btn-danger-hover"
                                 onClick={() => removeItem(index)}
                                 disabled={items.length <= 1}
                                 title="Remove item"
                             >
-                                ✕
+                                <Trash2 size={18} />
                             </button>
                         </div>
                     </div>
