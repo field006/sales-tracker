@@ -23,6 +23,18 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
     const [catalogProducts, setCatalogProducts] = useState([])
     const [catalogCategories, setCatalogCategories] = useState([])
     const [activeDropdownRow, setActiveDropdownRow] = useState(null)
+    const formRef = useRef(null)
+
+    // Handle click away for autocomplete
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (formRef.current && !formRef.current.contains(event.target)) {
+                setActiveDropdownRow(null)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     useEffect(() => {
         // Fetch Catalog
@@ -198,7 +210,7 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
     }
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} ref={formRef}>
             <h2 style={{ marginBottom: 20 }}>{isEdit ? 'Edit Sale' : 'New Sale'}</h2>
 
             {error && <div className="error-msg">{error}</div>}
@@ -293,20 +305,20 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
 
                             {/* Autocomplete Dropdown */}
                             {activeDropdownRow === index && filteredProducts.length > 0 && (
-                                <div style={{
-                                    position: 'absolute', top: '42px', left: 0, right: 0, zIndex: 10,
-                                    background: 'var(--surface)', border: '1px solid var(--border)',
-                                    borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow)',
-                                    maxHeight: '200px', overflowY: 'auto'
-                                }}>
+                                <div className="autocomplete-dropdown">
                                     {filteredProducts.map(p => (
                                         <div
                                             key={p.id}
+                                            className="autocomplete-item"
                                             onClick={() => selectCatalogProduct(index, p)}
-                                            style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}
                                         >
-                                            <span style={{ fontWeight: 500 }}>{p.name}</span>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Rp {Number(p.default_price).toLocaleString('id-ID')} • {p.category_name || 'Uncategorized'}</span>
+                                            <div className="prod-info">
+                                                <span className="prod-name">{p.name}</span>
+                                                <span className="prod-meta">{p.category_name || 'Uncategorized'}</span>
+                                            </div>
+                                            <span className="prod-price">
+                                                Rp {Number(p.default_price).toLocaleString('id-ID')}
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
