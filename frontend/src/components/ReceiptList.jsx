@@ -8,31 +8,37 @@ export default function ReceiptList({ receipts, loading, search, onSearchChange,
     useEffect(() => {
         setPage(1)
     }, [search])
-    if (loading) {
-        return (
-            <div className="loading">
-                <div className="spinner"></div>
-            </div>
-        )
-    }
 
     const totalPages = Math.ceil(receipts.length / ITEMS_PER_PAGE)
     const currentReceipts = receipts.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
     return (
         <>
-            <div className="search-bar">
-                <span className="search-icon">🔍</span>
-                <input
-                    type="text"
-                    className="input"
-                    placeholder="Search invoices..."
-                    value={search}
-                    onChange={(e) => onSearchChange(e.target.value)}
-                />
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '24px' }}>
+                <div className="search-bar" style={{ margin: 0, flex: 1 }}>
+                    <span className="search-icon">🔍</span>
+                    <input
+                        type="text"
+                        className="input"
+                        placeholder="Search invoices..."
+                        value={search}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                    />
+                </div>
+                <button
+                    className="btn btn-primary"
+                    onClick={onAdd}
+                    style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                    + New Invoice
+                </button>
             </div>
 
-            {receipts.length === 0 ? (
+            {loading ? (
+                <div className="loading">
+                    <div className="spinner"></div>
+                </div>
+            ) : receipts.length === 0 ? (
                 <div className="empty-state">
                     <div className="emoji">🧾</div>
                     <p>No sales yet</p>
@@ -87,9 +93,6 @@ export default function ReceiptList({ receipts, loading, search, onSearchChange,
                 </div>
             )}
 
-            <button className="fab" onClick={onAdd} title="Add invoice">
-                +
-            </button>
         </>
     )
 }

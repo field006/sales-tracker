@@ -89,6 +89,27 @@ router.get('/', (req, res) => {
     }
 })
 
+// GET /api/receipts/next-number — Get next receipt number for a given date
+router.get('/next-number', (req, res) => {
+    try {
+        const userId = req.user.user_id
+        const { date } = req.query
+        if (!date) return res.status(400).json({ error: 'date is required' })
+
+        const row = db.prepare(
+            `SELECT MAX(CAST(restaurant_name AS INTEGER)) as max_num
+             FROM receipts
+             WHERE user_id = ? AND date = ? AND restaurant_name GLOB '[0-9]*'`
+        ).get(userId, date)
+
+        const maxNum = row?.max_num
+        res.json({ next_number: maxNum != null ? maxNum + 1 : null })
+    } catch (err) {
+        console.error('Error fetching next receipt number:', err)
+        res.status(500).json({ error: 'Failed to fetch next receipt number' })
+    }
+})
+
 // GET /api/receipts/:id — Get receipt with items for user
 router.get('/:id', (req, res) => {
     try {

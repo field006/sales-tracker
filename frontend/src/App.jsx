@@ -85,6 +85,13 @@ function App() {
     const [receipts, setReceipts] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [debouncedSearch, setDebouncedSearch] = useState('')
+
+    // Debounce: only update debouncedSearch 300ms after user stops typing
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search), 300)
+        return () => clearTimeout(timer)
+    }, [search])
 
     const loadReceipts = useCallback(async (searchTerm = '') => {
         if (!user) return; // Don't try loading if not authenticated
@@ -105,9 +112,9 @@ function App() {
 
     useEffect(() => {
         if (user && view === 'list') {
-            loadReceipts(search)
+            loadReceipts(debouncedSearch)
         }
-    }, [view, search, loadReceipts, user])
+    }, [view, debouncedSearch, loadReceipts, user])
 
     const handleSelect = (id) => {
         setSelectedId(id)
@@ -172,6 +179,7 @@ function App() {
 
             {view === 'form' && (
                 <ReceiptForm
+                    key={`new-${Date.now()}`}
                     receiptId={null}
                     onSave={handleSave}
                     onCancel={handleBack}

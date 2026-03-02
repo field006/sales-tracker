@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Trash2 } from 'lucide-react'
-import { createReceipt, updateReceipt, fetchReceipt, fetchProducts, fetchCategories, createProduct } from '../api'
+import { createReceipt, updateReceipt, fetchReceipt, fetchProducts, fetchCategories, createProduct, updateProduct, fetchNextReceiptNumber } from '../api'
 
-const emptyItem = { name: '', category: 'Uncategorized', category_id: null, qty: 1, price: 0 }
+const emptyItem = { name: '', category: 'Uncategorized', category_id: null, qty: 1, price: '', subtotal: '', catalog_product_id: null, default_price: null, recent_price: null }
 
 export default function ReceiptForm({ receiptId, onSave, onCancel }) {
     const isEdit = receiptId !== null
@@ -18,6 +18,7 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
     const [loadingEdit, setLoadingEdit] = useState(false)
+    const [toast, setToast] = useState(null) // { message, type: 'success'|'error' }
 
     // Catalog State
     const [catalogProducts, setCatalogProducts] = useState([])
@@ -36,43 +37,67 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
+    // Fetch catalog on mount
     useEffect(() => {
-        // Fetch Catalog
         Promise.all([fetchProducts(), fetchCategories()])
             .then(([prods, cats]) => {
                 setCatalogProducts(prods)
                 setCatalogCategories(cats)
             })
             .catch(err => console.error("Could not load catalog", err))
+    }, [])
 
-        if (isEdit) {
-            setLoadingEdit(true)
-            fetchReceipt(receiptId)
-                .then((data) => {
-                    setForm({
-                        receipt_number: data.restaurant_name, // Map legacy column locally
-                        date: data.date,
-                        tax: data.tax || 0,
-                        service_charge: data.service_charge || 0,
-                        note: data.note || '',
-                    })
-                    setItems(
-                        data.items.map((item) => ({
-                            name: item.name,
-                            category: item.category || 'Uncategorized',
-                            category_id: null, // Legacy items don't have this mapped, we just need the text
-                            qty: item.qty,
-                            price: item.price,
-                        }))
-                    )
+    // Auto-fetch next receipt number whenever date changes (new mode only)
+    useEffect(() => {
+        if (isEdit || !form.date) return
+        fetchNextReceiptNumber(form.date)
+            .then(data => {
+                setForm(prev => ({
+                    ...prev,
+                    receipt_number: data.next_number != null ? String(data.next_number) : ''
+                }))
+            })
+            .catch(() => { }) // Silently ignore — user can type manually
+    }, [form.date, isEdit])
+
+    // Load receipt data in edit mode
+    useEffect(() => {
+        if (!isEdit) return
+        setLoadingEdit(true)
+        fetchReceipt(receiptId)
+            .then((data) => {
+                setForm({
+                    receipt_number: data.restaurant_name,
+                    date: data.date,
+                    tax: data.tax || 0,
+                    service_charge: data.service_charge || 0,
+                    note: data.note || '',
                 })
-                .catch(() => setError('Failed to load receipt'))
-                .finally(() => setLoadingEdit(false))
-        }
+                setItems(
+                    data.items.map((item) => ({
+                        name: item.name,
+                        category: item.category || 'Uncategorized',
+                        category_id: null,
+                        qty: item.qty,
+                        price: item.price,
+                        subtotal: Math.round(item.qty * item.price * 100) / 100,
+                        catalog_product_id: null,
+                        default_price: null,
+                        recent_price: null,
+                    }))
+                )
+            })
+            .catch(() => setError('Failed to load receipt'))
+            .finally(() => setLoadingEdit(false))
     }, [receiptId, isEdit])
 
     const updateForm = (field, value) => {
         setForm((prev) => ({ ...prev, [field]: value }))
+    }
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type })
+        setTimeout(() => setToast(null), 3000)
     }
 
     const updateItem = (index, field, value) => {
@@ -81,9 +106,19 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                 if (i !== index) return item
                 const updated = { ...item, [field]: value }
 
-                // If they changed the name manually, disconnect it from any strict catalog ID
-                if (field === 'name') {
-                    updated.is_new = true // Flag that this might need creating
+                if (field === 'name') updated.is_new = true
+
+                // Keep subtotal ↔ price in sync bidirectionally
+                if (field === 'qty') {
+                    const priceVal = Number(item.price) || 0;
+                    updated.subtotal = value === '' ? '' : Math.round(Number(value) * priceVal * 100) / 100
+                } else if (field === 'price') {
+                    const qtyVal = Number(item.qty) || 0;
+                    updated.subtotal = value === '' ? '' : Math.round(qtyVal * Number(value) * 100) / 100
+                } else if (field === 'subtotal') {
+                    // Back-calculate unit price from subtotal ÷ qty, rounded to 2dp
+                    const qtyVal = Number(item.qty) || 1;
+                    updated.price = value === '' ? '' : Math.round((Number(value) / qtyVal) * 100) / 100
                 }
 
                 return updated
@@ -94,12 +129,17 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
     const selectCatalogProduct = (index, product) => {
         setItems(prev => prev.map((item, i) => {
             if (i !== index) return item
+            const preferPrice = product.recent_price > 0 ? product.recent_price : product.default_price;
             return {
                 ...item,
                 name: product.name,
                 category: product.category_name || 'Uncategorized',
                 category_id: product.category_id,
-                price: product.default_price,
+                price: preferPrice,
+                subtotal: Math.round(item.qty * preferPrice * 100) / 100,
+                catalog_product_id: product.id,
+                default_price: product.default_price,
+                recent_price: product.recent_price,
                 is_new: false
             }
         }))
@@ -145,14 +185,11 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
 
         setSaving(true)
         try {
-            // Before saving the receipt, auto-create any new products they typed in
             const finalItems = []
             for (const item of validItems) {
                 let finalCategory = item.category
 
-                // If it's flagged as new, maybe we should create it
                 if (item.is_new) {
-                    // check if it exists exactly in catalog
                     const exists = catalogProducts.find(p => p.name.toLowerCase() === item.name.toLowerCase())
                     if (!exists && item.category_id) {
                         try {
@@ -166,7 +203,6 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                             console.error("Silently failed to auto-create product catalog entry", e)
                         }
                     } else if (item.category_id) {
-                        // user typed an existing name but picked a new category manually, let's just grab the cat name
                         const cat = catalogCategories.find(c => c.id === Number(item.category_id))
                         if (cat) finalCategory = cat.name
                     }
@@ -182,20 +218,54 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
 
             const payload = {
                 ...form,
-                restaurant_name: form.receipt_number, // Pass as legacy column back to DB smoothly without altering tables yet
+                restaurant_name: form.receipt_number,
                 tax: Number(form.tax),
                 service_charge: Number(form.service_charge),
                 items: finalItems
             }
 
             if (isEdit) {
+                // Edit mode: save and close (existing behaviour)
                 await updateReceipt(receiptId, payload)
+                onSave()
             } else {
+                // New mode: save, then keep form open
                 await createReceipt(payload)
+
+                // Feature 2: Sync catalog price for any product whose price was changed
+                for (const item of validItems) {
+                    if (
+                        item.catalog_product_id &&
+                        item.recent_price !== undefined &&
+                        Number(item.price) !== Number(item.recent_price)
+                    ) {
+                        try {
+                            await updateProduct(item.catalog_product_id, {
+                                name: item.name,
+                                category_id: item.category_id,
+                                recent_price: Number(item.price)
+                            })
+                        } catch (e) {
+                            console.error('Failed to sync product price', e)
+                        }
+                    }
+                }
+
+                // Refresh in-memory catalog so next autocomplete shows updated prices
+                fetchProducts().then(prods => setCatalogProducts(prods)).catch(() => { })
+
+                // Feature 1: Keep form open — reset items, auto-increment receipt number
+                setItems([{ ...emptyItem }])
+                const numData = await fetchNextReceiptNumber(form.date)
+                setForm(prev => ({
+                    ...prev,
+                    receipt_number: numData.next_number != null ? String(numData.next_number) : prev.receipt_number
+                }))
+                showToast('Receipt saved! ✨')
             }
-            onSave()
         } catch (err) {
             setError(err.message)
+            showToast(err.message || 'Failed to save receipt', 'error')
         } finally {
             setSaving(false)
         }
@@ -277,9 +347,6 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
             {/* Items */}
             <div className="items-header">
                 <h3>Items</h3>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={addItem}>
-                    + Add Item
-                </button>
             </div>
 
             {items.map((item, index) => {
@@ -316,9 +383,18 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                                                 <span className="prod-name">{p.name}</span>
                                                 <span className="prod-meta">{p.category_name || 'Uncategorized'}</span>
                                             </div>
-                                            <span className="prod-price">
-                                                Rp {Number(p.default_price).toLocaleString('id-ID')}
-                                            </span>
+                                            <div className="prod-prices">
+                                                {p.recent_price > 0 && p.recent_price !== p.default_price ? (
+                                                    <>
+                                                        <span className="prod-price recent">Recent: Rp {Number(p.recent_price).toLocaleString('id-ID')}</span>
+                                                        <span className="prod-price default-muted">Default: Rp {Number(p.default_price).toLocaleString('id-ID')}</span>
+                                                    </>
+                                                ) : (
+                                                    <span className="prod-price">
+                                                        Rp {Number(p.default_price).toLocaleString('id-ID')}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -344,29 +420,68 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                         </div>
 
                         <div className="item-details-group">
-                            <input
-                                type="number"
-                                className="input item-qty"
-                                placeholder="Qty"
-                                min="1"
-                                value={item.qty}
-                                onChange={(e) => updateItem(index, 'qty', Number(e.target.value))}
-                            />
-                            <input
-                                type="number"
-                                className="input item-price"
-                                placeholder="Price"
-                                min="0"
-                                step="0.01"
-                                value={item.price}
-                                onChange={(e) => updateItem(index, 'price', Number(e.target.value))}
-                            />
+                            <div className="input-stepper item-qty">
+                                <button type="button" className="stepper-btn" onClick={() => updateItem(index, 'qty', Math.max(1, (Number(item.qty) || 0) - 1))}>−</button>
+                                <input
+                                    type="number"
+                                    className="stepper-input hide-arrows"
+                                    placeholder="Qty"
+                                    min="1"
+                                    value={item.qty === '' ? '' : item.qty}
+                                    onChange={(e) => updateItem(index, 'qty', e.target.value === '' ? '' : Number(e.target.value))}
+                                />
+                                <button type="button" className="stepper-btn" onClick={() => updateItem(index, 'qty', (Number(item.qty) || 0) + 1)}>+</button>
+                            </div>
+                            <div className="item-price-wrapper">
+                                <div className="input-stepper">
+                                    <button type="button" className="stepper-btn text-xs" onClick={() => updateItem(index, 'price', Math.max(0, (Number(item.price) || 0) - 1000))}>-1k</button>
+                                    <input
+                                        type="number"
+                                        className="stepper-input hide-arrows"
+                                        placeholder="Price"
+                                        min="0"
+                                        step="0.01"
+                                        value={item.price === '' ? '' : item.price}
+                                        onChange={(e) => updateItem(index, 'price', e.target.value === '' ? '' : Number(e.target.value))}
+                                    />
+                                    <button type="button" className="stepper-btn text-xs" onClick={() => updateItem(index, 'price', (Number(item.price) || 0) + 1000)}>+1k</button>
+                                </div>
+
+                                {/* Price Toggle Pills */}
+                                {item.default_price > 0 && item.recent_price > 0 && item.default_price !== item.recent_price && (
+                                    <div className="price-pills">
+                                        <button
+                                            type="button"
+                                            className={`price-pill ${Number(item.price) === Number(item.default_price) ? 'active' : ''}`}
+                                            onClick={() => updateItem(index, 'price', item.default_price)}
+                                            title="Use Default Price"
+                                        >
+                                            Def: Rp {Number(item.default_price).toLocaleString('id-ID')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`price-pill ${Number(item.price) === Number(item.recent_price) ? 'active' : ''}`}
+                                            onClick={() => updateItem(index, 'price', item.recent_price)}
+                                            title="Use Recent Price"
+                                        >
+                                            Rec: Rp {Number(item.recent_price).toLocaleString('id-ID')}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="item-actions-group">
-                            <span className="item-total">
-                                Rp {(item.qty * item.price).toLocaleString('id-ID')}
-                            </span>
+                            <input
+                                type="number"
+                                className="input item-total-input hide-arrows"
+                                placeholder="Subtotal"
+                                min="0"
+                                step="0.01"
+                                value={item.subtotal === '' ? '' : item.subtotal}
+                                onChange={(e) => updateItem(index, 'subtotal', e.target.value === '' ? '' : Number(e.target.value))}
+                                title="Edit subtotal to auto-calculate unit price"
+                            />
                             <button
                                 type="button"
                                 className="btn btn-icon btn-ghost btn-danger-hover"
@@ -380,6 +495,13 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                     </div>
                 )
             })}
+
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={addItem}>
+                    + Add Item
+                </button>
+            </div>
 
             {/* Summary */}
             <div className="summary">
@@ -405,8 +527,8 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                 </div>
             </div>
 
-            {/* Actions */}
-            <div className="action-bar">
+            {/* Actions — Save/Cancel on right */}
+            <div className="action-bar" style={{ justifyContent: 'flex-end' }}>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                     {saving ? 'Saving...' : isEdit ? 'Update Receipt' : 'Save Receipt'}
                 </button>
@@ -414,6 +536,13 @@ export default function ReceiptForm({ receiptId, onSave, onCancel }) {
                     Cancel
                 </button>
             </div>
+
+            {/* Toast notification */}
+            {toast && (
+                <div className={`toast toast-${toast.type}`}>
+                    {toast.type === 'success' ? '✅' : '❌'} {toast.message}
+                </div>
+            )}
         </form>
     )
 }

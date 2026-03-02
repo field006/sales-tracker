@@ -59,6 +59,7 @@ db.exec(`
     category_id INTEGER,
     name TEXT NOT NULL,
     default_price REAL DEFAULT 0,
+    recent_price REAL DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
@@ -112,6 +113,13 @@ if (userCount.count === 0) {
 // Ensure category column exists in receipt_items (from previous brainstorming)
 try {
   db.exec("ALTER TABLE receipt_items ADD COLUMN category TEXT DEFAULT 'Uncategorized'")
+} catch (err) {
+  // Column already exists
+}
+
+// Ensure recent_price column exists in products table
+try {
+  db.exec("ALTER TABLE products ADD COLUMN recent_price REAL DEFAULT 0")
 } catch (err) {
   // Column already exists
 }

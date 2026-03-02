@@ -117,6 +117,14 @@ export async function deleteReceipt(id) {
     return res.json();
 }
 
+export async function fetchNextReceiptNumber(date) {
+    const res = await customFetch(`/api/receipts/next-number?date=${date}`, {
+        headers: getAuthHeaders()
+    })
+    if (!res.ok) throw new Error('Failed to fetch next receipt number')
+    return res.json()
+}
+
 // ===== CATALOG =====
 export async function fetchCategories() {
     const res = await customFetch('/api/catalog/categories', { headers: getAuthHeaders() });

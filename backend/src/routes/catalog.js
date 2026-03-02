@@ -60,7 +60,7 @@ router.get('/products', (req, res) => {
 
 // POST new product
 router.post('/products', (req, res) => {
-    const { name, category_id, default_price } = req.body
+    const { name, category_id, default_price, recent_price } = req.body
 
     if (!name || !name.trim()) {
         return res.status(400).json({ error: 'Product name is required' })
@@ -74,14 +74,15 @@ router.post('/products', (req, res) => {
         }
 
         const insert = db.prepare(`
-            INSERT INTO products (user_id, category_id, name, default_price) 
-            VALUES (?, ?, ?, ?)
+            INSERT INTO products (user_id, category_id, name, default_price, recent_price) 
+            VALUES (?, ?, ?, ?, ?)
         `)
         const result = insert.run(
             req.user.user_id,
             category_id || null,
             name.trim(),
-            default_price || 0
+            default_price || 0,
+            recent_price !== undefined ? recent_price : (default_price || 0)
         )
 
         const newProduct = db.prepare(`
@@ -103,7 +104,7 @@ router.post('/products', (req, res) => {
 
 // PUT update product
 router.put('/products/:id', (req, res) => {
-    const { name, category_id, default_price } = req.body
+    const { name, category_id, default_price, recent_price } = req.body
 
     if (!name || !name.trim()) {
         return res.status(400).json({ error: 'Product name is required' })
@@ -122,13 +123,17 @@ router.put('/products/:id', (req, res) => {
 
         const update = db.prepare(`
             UPDATE products 
-            SET category_id = ?, name = ?, default_price = ? 
+            SET category_id = COALESCE(?, category_id), 
+                name = COALESCE(?, name), 
+                default_price = COALESCE(?, default_price),
+                recent_price = COALESCE(?, recent_price)
             WHERE id = ? AND user_id = ?
         `)
         update.run(
-            category_id || null,
-            name.trim(),
-            default_price || 0,
+            category_id !== undefined ? category_id : null,
+            name ? name.trim() : null,
+            default_price !== undefined ? default_price : null,
+            recent_price !== undefined ? recent_price : null,
             req.params.id,
             req.user.user_id
         )

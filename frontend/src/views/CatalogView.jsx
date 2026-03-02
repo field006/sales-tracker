@@ -17,6 +17,8 @@ export default function CatalogView() {
     const [products, setProducts] = useState([])
     const [prodLoading, setProdLoading] = useState(true)
     const [prodForm, setProdForm] = useState({ name: '', category_id: '', default_price: '' })
+    const [editingProdId, setEditingProdId] = useState(null)
+    const [editingProdName, setEditingProdName] = useState('')
 
     // Pagination State
     const ITEMS_PER_PAGE = 10
@@ -101,6 +103,21 @@ export default function CatalogView() {
             if (currentProds.length === 1 && prodPage > 1) {
                 setProdPage(prodPage - 1)
             }
+        } catch (err) {
+            setError(err.message)
+        }
+    }
+
+    const handleSaveProductEdit = async (prod) => {
+        if (!editingProdName.trim()) return
+        try {
+            setError(null)
+            const updatedProd = await updateProduct(prod.id, {
+                ...prod, // Keep existing category_id and default_price
+                name: editingProdName.trim()
+            })
+            setProducts(products.map(p => p.id === prod.id ? updatedProd : p))
+            setEditingProdId(null)
         } catch (err) {
             setError(err.message)
         }
@@ -254,20 +271,58 @@ export default function CatalogView() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {products.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>No products yet.</p> : currentProds.map(prod => (
                                 <div key={prod.id} className="product-list-item">
-                                    <span style={{ fontWeight: 600 }}>{prod.name}</span>
+                                    {editingProdId === prod.id ? (
+                                        <input
+                                            type="text"
+                                            className="edit-input"
+                                            value={editingProdName}
+                                            onChange={e => setEditingProdName(e.target.value)}
+                                            autoFocus
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') handleSaveProductEdit(prod)
+                                                if (e.key === 'Escape') setEditingProdId(null)
+                                            }}
+                                        />
+                                    ) : (
+                                        <span style={{ fontWeight: 600 }}>{prod.name}</span>
+                                    )}
+
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                                         {prod.category_name || <span style={{ fontStyle: 'italic' }}>Uncategorized</span>}
                                     </span>
                                     <span style={{ fontWeight: 500, color: 'var(--primary)' }}>Rp {Number(prod.default_price || 0).toLocaleString('id-ID')}</span>
 
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost btn-icon"
-                                        onClick={() => handleDeleteProduct(prod.id)}
-                                        style={{ color: 'var(--danger)' }}
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    <div className="edit-actions">
+                                        {editingProdId === prod.id ? (
+                                            <>
+                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingProdId(null)}>Cancel</button>
+                                                <button type="button" className="btn btn-primary btn-sm" onClick={() => handleSaveProductEdit(prod)}>Save</button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-icon"
+                                                    onClick={() => {
+                                                        setEditingProdId(prod.id)
+                                                        setEditingProdName(prod.name)
+                                                    }}
+                                                    title="Edit Product Name"
+                                                >
+                                                    <span style={{ fontSize: '1rem' }}>✏️</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-icon"
+                                                    onClick={() => handleDeleteProduct(prod.id)}
+                                                    style={{ color: 'var(--danger)' }}
+                                                    title="Delete Product"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
 
